@@ -18,7 +18,7 @@ Local $ini_filename = @ScriptDir & "\" & $app_name & ".ini"
 _ConfluenceAuthenticationWithToast($app_name, "https://janisoncls.atlassian.net", $ini_filename)
 _ConfluenceAuthenticationWithToast($app_name, "https://janisoncls.atlassian.net", $ini_filename)
 _OctopusDomainSet("https://octopus.janison.com.au")
-_OctopusLogin("")
+_OctopusLogin("API-YGNPW8QJMAS38DEY9ASYENSWQ")
 
 ; Page header
 
@@ -26,7 +26,7 @@ $storage_format = '<a href=\"https://janisoncls.atlassian.net/wiki/download/atta
 
 ; Reports
 
-$storage_format = $storage_format &	"<table><tbody><tr><th>Project</th><th>Time</th><th>State</th></tr>" & @CRLF
+$storage_format = $storage_format &	'<table data-layout=\"wide\"><colgroup><col style=\"width:242px;\"/><col style=\"width:109px;\"/><col style=\"width:81px;\"/><col style=\"width:296px;\"/><col style=\"width:232px;\"/></colgroup><tbody><tr><th>Project</th><th>Time</th><th>State</th><th>Global Url</th><th>Queued By</th></tr>' & @CRLF
 
 _Toast_Show(0, $app_name, "Getting deployments", -300, False, True)
 
@@ -36,13 +36,25 @@ _Toast_Show(0, $app_name, "Getting deployment states and tenants", -300, False, 
 
 for $deployment_num = 0 to (UBound($deployment) - 1)
 
-	Local $tenant = _OctopusGetTenantName($deployment[$deployment_num][0])
-;	Local $deployment_id = $deployment[$deployment_num][1]
+	Local $tenant_id = $deployment[$deployment_num][0]
+	Local $deployment_id = $deployment[$deployment_num][1]
 	Local $created = $deployment[$deployment_num][2]
-	Local $state = _OctopusGetTaskState($deployment[$deployment_num][3])
+	Local $task_id = $deployment[$deployment_num][3]
 
-;	$output = $output & $tenant & "	" & $deployment_id & "	" & $created & "	" & $state & @CRLF
-	$storage_format = $storage_format & "<tr><td>" & $tenant & "</td><td>" & $created & "</td><td>" & $state & "</td></tr>" & @CRLF
+	Local $deployment_queued_username = _OctopusGetDeploymentQueuedEventUsername($deployment_id)
+	Local $tenant_name = _OctopusGetTenantName($tenant_id)
+	_OctopusGetTask($task_id)
+	Local $decoded_json = Json_Decode($octopus_json)
+	Local $state = Json_Get($decoded_json, '.Task.State')
+	Local $global_url = ""
+	Local $tmp_arr = StringRegExp($octopus_json, '\"Global Url       : (.*)\"', 1)
+
+	if @error = 0 Then
+
+		$global_url = $tmp_arr[0]
+	EndIf
+
+	$storage_format = $storage_format & "<tr><td>" & $tenant_name & "</td><td>" & $created & "</td><td>" & $state & "</td><td>" & $global_url & "</td><td>" & $deployment_queued_username & "</td></tr>" & @CRLF
 Next
 
 $storage_format = $storage_format &	"</tbody></table>" & @CRLF
